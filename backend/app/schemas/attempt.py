@@ -18,6 +18,7 @@ class AttemptResponse(BaseModel):
     decision: str  # "advance" | "remediate" | "reroute"
     next_kc_id: int | None
     feedback: str
+    decision_rationale: str
 
 
 class AttemptOut(BaseModel):

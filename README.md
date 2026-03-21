@@ -13,6 +13,8 @@ A "Google Maps for Learning" adaptive CS education platform built on:
 Frontend (Next.js 14 + React Flow)  ←→  Backend (FastAPI + Python)  ←→  PostgreSQL
 ```
 
+Full **as-built system design** (data model, APIs, flows, mapping to the research spec): [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md).
+
 ## Quick Start
 
 ### 1. Start PostgreSQL
@@ -94,6 +96,9 @@ Key endpoints:
 - `POST /api/v1/routes/{id}/advance` — advance after KC mastered
 - `POST /api/v1/routes/{id}/reroute` — backtrack to prerequisite
 - `DELETE /api/v1/mastery/{id}` — reset learner progress (demo)
+- `POST /api/v1/tutor/chat` — optional AI explanations (`OPENAI_API_KEY` on server; does not change routing)
+
+Route and attempt responses include plain-language **why-next** / **decision** rationale fields for the UI.
 
 ## References
 

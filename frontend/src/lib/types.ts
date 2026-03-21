@@ -70,6 +70,7 @@ export interface AttemptResponse {
   decision: "advance" | "remediate" | "reroute";
   next_kc_id: number | null;
   feedback: string;
+  decision_rationale: string;
 }
 
 export interface AttemptRecord {
@@ -90,8 +91,13 @@ export interface Route {
   ordered_kc_names: string[];
   next_kc_id: number | null;
   next_kc_name: string | null;
+  next_step_rationale: string;
   created_ts: string;
   updated_ts: string;
+}
+
+export interface TutorChatResponse {
+  reply: string;
 }
 
 export interface AdminStats {

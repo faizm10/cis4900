@@ -16,6 +16,7 @@ class RouteOut(BaseModel):
     ordered_kc_names: list[str]
     next_kc_id: int | None
     next_kc_name: str | None
+    next_step_rationale: str
     created_ts: datetime
     updated_ts: datetime
 

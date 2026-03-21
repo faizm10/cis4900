@@ -10,7 +10,32 @@ from app.models.kc import KC
 from app.models.item import Item
 from app.models.attempt import Attempt
 from app.models.mastery import Mastery
-from app.services.bkt import bkt_update, decide
+from app.services.bkt import TAU_LOW, TAU_MASTERY, K_REROUTE, bkt_update, decide
+
+
+def format_decision_rationale(
+    decision: str,
+    p_mastery_after: float,
+    attempt_count: int,
+    kc_name: str,
+) -> str:
+    """Plain-language explanation of advance / remediate / reroute for the learner UI."""
+    if decision == "advance":
+        return (
+            f'Mastery for "{kc_name}" reached the advance threshold ({TAU_MASTERY:.0%}). '
+            "The system treats this concept as mastered and moves you to the next topic on your route."
+        )
+    if decision == "reroute":
+        return (
+            f'Mastery for "{kc_name}" stayed below the reroute threshold ({TAU_LOW:.0%}) '
+            f"after {attempt_count} attempt(s) on this concept. "
+            "The system is adjusting your path so you can reinforce an earlier prerequisite first."
+        )
+    return (
+        f'Keep practicing "{kc_name}". Estimated mastery is {p_mastery_after:.0%} '
+        f'(advance at {TAU_MASTERY:.0%}). '
+        f"If it stays below {TAU_LOW:.0%} for {K_REROUTE} attempts, the system may reroute you to a prerequisite."
+    )
 
 
 def process_attempt(
@@ -95,6 +120,10 @@ def process_attempt(
 
     db.commit()
 
+    rationale = format_decision_rationale(
+        decision, p_mastery_after, new_attempt_count, kc.name
+    )
+
     return {
         "attempt_id": attempt_id,
         "correct": correct,
@@ -104,4 +133,5 @@ def process_attempt(
         "decision": decision,
         "next_kc_id": kc_id,  # routing layer updates this if reroute/advance
         "feedback": feedback,
+        "decision_rationale": rationale,
     }

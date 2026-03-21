@@ -1,18 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLearnerStore } from "@/store/learnerStore";
 import KnowledgeMap from "@/components/map/KnowledgeMap";
+import TutorPanel from "@/components/tutor/TutorPanel";
+import { api } from "@/lib/api";
 
 export default function MapPage() {
   const router = useRouter();
   const { learnerId, goalKcName, routeKcNames, currentKcId, routeKcIds } = useLearnerStore();
+  const [stepRationale, setStepRationale] = useState<string | null>(null);
 
   useEffect(() => {
     if (!learnerId) router.push("/");
   }, [learnerId, router]);
+
+  useEffect(() => {
+    if (!learnerId) return;
+    api
+      .getRoute(learnerId)
+      .then((r) => setStepRationale(r.next_step_rationale))
+      .catch(() => setStepRationale(null));
+  }, [learnerId, routeKcIds]);
 
   const currentIdx = routeKcIds.indexOf(currentKcId ?? -1);
 
@@ -42,6 +53,15 @@ export default function MapPage() {
           </Link>
         </div>
       </div>
+
+      {stepRationale && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-slate-700 leading-relaxed">
+          <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-1">
+            Why this topic?
+          </p>
+          {stepRationale}
+        </div>
+      )}
 
       {/* Route breadcrumb */}
       {routeKcNames.length > 0 && (
@@ -86,6 +106,10 @@ export default function MapPage() {
       </div>
 
       <KnowledgeMap />
+
+      {learnerId && (
+        <TutorPanel learnerId={learnerId} kcId={currentKcId ?? null} />
+      )}
     </div>
   );
 }

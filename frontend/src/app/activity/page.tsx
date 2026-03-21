@@ -8,6 +8,7 @@ import { AttemptResponse, Item } from "@/lib/types";
 import { useLearnerStore } from "@/store/learnerStore";
 import MasteryBar from "@/components/activity/MasteryBar";
 import MultipleChoiceForm from "@/components/activity/MultipleChoiceForm";
+import TutorPanel from "@/components/tutor/TutorPanel";
 
 type Phase = "loading" | "question" | "submitted" | "decision";
 
@@ -167,6 +168,9 @@ export default function ActivityPage() {
               >
                 {result.correct ? "✓ " : "✗ "}{result.feedback}
               </div>
+              <p className="text-sm text-slate-600 leading-relaxed border-l-2 border-blue-200 pl-3">
+                {result.decision_rationale}
+              </p>
               <MasteryBar before={result.p_mastery_before} after={result.p_mastery_after} />
               {phase === "submitted" && !modal && (
                 <button
@@ -184,6 +188,8 @@ export default function ActivityPage() {
           )}
         </div>
       )}
+
+      <TutorPanel learnerId={learnerId} kcId={currentKcId} />
 
       {phase === "loading" && !item && (
         <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400">

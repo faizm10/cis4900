@@ -21,7 +21,7 @@ export default function MasteryBar({ before, after, threshold = 0.95 }: MasteryB
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-slate-500">
-        <span>Mastery</span>
+        <span>Estimated mastery P(L)</span>
         <span className="font-medium" style={{ color }}>
           {pct}%
           {after > before && (

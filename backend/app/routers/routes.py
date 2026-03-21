@@ -8,25 +8,50 @@ from app.models.prereq_edge import PrereqEdge
 from app.models.mastery import Mastery
 from app.models.route import Route
 from app.schemas.route import RouteCreate, RouteOut
+from app.services.bkt import TAU_MASTERY
 from app.services.routing import build_prereq_graph, compute_route, find_reroute_target
 
 router = APIRouter()
+
+
+def _next_step_rationale(
+    route: Route,
+    kc_map: dict[int, str],
+    goal_name: str,
+) -> str:
+    if not route.next_kc_id:
+        return (
+            "No next topic is queued—you may have finished your route toward the goal, "
+            "or you can set a new goal from the Goal screen to refresh your path."
+        )
+    next_name = kc_map.get(route.next_kc_id, "Unknown")
+    ordered_labels = [kc_map.get(kid, "?") for kid in route.ordered_kc_ids]
+    chain = " → ".join(ordered_labels)
+    pct = int(round(TAU_MASTERY * 100))
+    return (
+        f'Next practice topic: "{next_name}". Your ordered path toward "{goal_name}" is: {chain}. '
+        f"The system moves forward when estimated mastery reaches about {pct}%; "
+        "if mastery stays low after several tries, it may reroute you to reinforce a prerequisite."
+    )
 
 
 def _build_route_out(route: Route, db: Session) -> RouteOut:
     goal_kc = db.query(KC).filter(KC.kc_id == route.goal_kc_id).first()
     kc_map: dict[int, str] = {kc.kc_id: kc.name for kc in db.query(KC).all()}
 
+    goal_name = goal_kc.name if goal_kc else "Unknown"
     next_kc_name = kc_map.get(route.next_kc_id) if route.next_kc_id else None
+    rationale = _next_step_rationale(route, kc_map, goal_name)
     return RouteOut(
         route_id=route.route_id,
         learner_id=route.learner_id,
         goal_kc_id=route.goal_kc_id,
-        goal_kc_name=goal_kc.name if goal_kc else "Unknown",
+        goal_kc_name=goal_name,
         ordered_kc_ids=route.ordered_kc_ids,
         ordered_kc_names=[kc_map.get(kid, "?") for kid in route.ordered_kc_ids],
         next_kc_id=route.next_kc_id,
         next_kc_name=next_kc_name,
+        next_step_rationale=rationale,
         created_ts=route.created_ts,
         updated_ts=route.updated_ts,
     )

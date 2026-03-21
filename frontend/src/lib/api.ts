@@ -11,6 +11,7 @@ import type {
   AttemptRecord,
   Route,
   AdminStats,
+  TutorChatResponse,
 } from "./types";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -91,4 +92,15 @@ export const api = {
   // Admin
   getStats: () => request<AdminStats>("/api/v1/admin/stats"),
   runSeed: () => request<{ message: string; kc_count: number }>("/api/v1/admin/seed", { method: "POST" }),
+
+  // Tutor (optional; 503 if OPENAI_API_KEY unset)
+  tutorChat: (payload: { learner_id: string; message?: string; kc_id?: number | null }) =>
+    request<TutorChatResponse>("/api/v1/tutor/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        learner_id: payload.learner_id,
+        message: payload.message ?? "",
+        kc_id: payload.kc_id ?? null,
+      }),
+    }),
 };
