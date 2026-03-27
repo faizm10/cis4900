@@ -96,9 +96,22 @@ Key endpoints:
 - `POST /api/v1/routes/{id}/advance` — advance after KC mastered
 - `POST /api/v1/routes/{id}/reroute` — backtrack to prerequisite
 - `DELETE /api/v1/mastery/{id}` — reset learner progress (demo)
-- `POST /api/v1/tutor/chat` — optional AI explanations (`OPENAI_API_KEY` on server; does not change routing)
+- `POST /api/v1/tutor/chat` — optional AI tutor (`LLM_PROVIDER`: openai | anthropic | gemini; does not change routing)
 
 Route and attempt responses include plain-language **why-next** / **decision** rationale fields for the UI.
+
+
+## AI tutor (optional)
+
+Set `LLM_PROVIDER` in `backend/.env` to **`openai`**, **`anthropic`**, or **`gemini`**, then set the matching credentials. The tutor only returns text; **routing and BKT are unchanged**.
+
+| Provider | Required env vars | Notes |
+|----------|-------------------|--------|
+| `openai` | `LLM_API_KEY` (or `OPENAI_API_KEY`), optional `LLM_BASE_URL`, `LLM_MODEL` | OpenAI or any OpenAI-compatible `POST /v1/chat/completions` with Bearer auth |
+| `anthropic` | `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION` | [Claude Messages API](https://docs.anthropic.com/en/api/messages) |
+| `gemini` | `GEMINI_API_KEY`, optional `GEMINI_MODEL`, `GEMINI_API_BASE_URL` | [Gemini generateContent](https://ai.google.dev/api/generate-content) |
+
+Also: `LLM_TIMEOUT_SEC` (optional). Use the **AI tutor** panel on Map and Practice after configuration.
 
 ## References
 
