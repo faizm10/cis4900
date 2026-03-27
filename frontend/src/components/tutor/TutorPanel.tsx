@@ -30,7 +30,7 @@ export default function TutorPanel({ learnerId, kcId }: TutorPanelProps) {
       const text = e instanceof Error ? e.message : "Request failed";
       setError(
         text.includes("503")
-          ? "AI tutor is not configured (backend needs OPENAI_API_KEY)."
+          ? "AI tutor is not configured (set LLM_PROVIDER and the matching API key on the server)."
           : text
       );
     } finally {
@@ -52,7 +52,7 @@ export default function TutorPanel({ learnerId, kcId }: TutorPanelProps) {
         <div className="px-4 pb-4 space-y-3 border-t border-slate-100">
           <p className="text-xs text-slate-500 pt-3 leading-relaxed">
             Explanations only — the app still decides your path and mastery. Requires{" "}
-            <code className="bg-slate-100 px-1 rounded">OPENAI_API_KEY</code> on the server.
+            <code className="bg-slate-100 px-1 rounded">LLM_PROVIDER</code> + provider key (see README).
           </p>
           <textarea
             value={message}
