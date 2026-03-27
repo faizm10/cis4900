@@ -35,6 +35,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
 # LaTeX build artifacts (docs/research)
 docs/**/*.aux
 docs/**/*.log
