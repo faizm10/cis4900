@@ -30,13 +30,20 @@ def tutor_chat(payload: TutorChatIn, db: Session = Depends(get_db)):
         )
     except RuntimeError as e:
         msg = str(e)
-        if "OPENAI_API_KEY" in msg or "disabled" in msg.lower():
+        if (
+            "disabled" in msg.lower()
+            or "LLM_API_KEY" in msg
+            or "OPENAI_API_KEY" in msg
+            or "ANTHROPIC_API_KEY" in msg
+            or "GEMINI_API_KEY" in msg
+        ):
             raise HTTPException(status_code=503, detail=msg) from e
         raise HTTPException(status_code=502, detail=msg) from e
     except httpx.HTTPStatusError as e:
+        detail = tutor_service.format_upstream_error(e.response)
         raise HTTPException(
             status_code=502,
-            detail=f"Language model API error: {e.response.status_code}",
+            detail=f"Language model API error {e.response.status_code}: {detail}",
         ) from e
     except Exception as e:
         raise HTTPException(status_code=502, detail="Tutor request failed") from e
