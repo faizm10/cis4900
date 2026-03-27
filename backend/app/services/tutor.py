@@ -7,6 +7,7 @@ from app.config import settings
 from app.models.kc import KC
 from app.models.mastery import Mastery
 from app.models.route import Route
+from app.services.llm_clients import dispatch_llm
 
 
 def _context_block(db: Session, learner_id: str, kc_id: int | None) -> str:
@@ -43,9 +44,48 @@ def _context_block(db: Session, learner_id: str, kc_id: int | None) -> str:
     return "\n".join(lines)
 
 
+def format_upstream_error(response: httpx.Response) -> str:
+    """Short detail string for HTTP errors from LLM APIs."""
+    try:
+        body = response.json()
+        err = body.get("error")
+        if isinstance(err, dict) and "message" in err:
+            return str(err["message"])[:500]
+        if isinstance(err, str):
+            return err[:500]
+        if body.get("type") == "error" and isinstance(body.get("error"), dict):
+            inner = body["error"]
+            if "message" in inner:
+                return str(inner["message"])[:500]
+        if isinstance(body.get("error"), dict) and "message" in body["error"]:
+            return str(body["error"]["message"])[:500]
+    except Exception:
+        pass
+    text = response.text[:500] if response.text else ""
+    return text or f"HTTP {response.status_code}"
+
+
+def _credential_error_message() -> str:
+    p = (settings.LLM_PROVIDER or "openai").lower()
+    if p == "openai":
+        return (
+            "Tutor is disabled: set LLM_API_KEY (or OPENAI_API_KEY) for OpenAI-compatible APIs."
+        )
+    if p == "anthropic":
+        return "Tutor is disabled: set ANTHROPIC_API_KEY for Claude."
+    if p == "gemini":
+        return "Tutor is disabled: set GEMINI_API_KEY for Gemini."
+    return "Tutor is disabled: check LLM_PROVIDER and API keys."
+
+
 def tutor_reply(db: Session, learner_id: str, message: str, kc_id: int | None) -> str:
-    if not settings.OPENAI_API_KEY:
-        raise RuntimeError("Tutor is disabled: OPENAI_API_KEY is not set.")
+    provider = (settings.LLM_PROVIDER or "openai").lower()
+    if provider == "openai" and not settings.LLM_API_KEY:
+        raise RuntimeError(_credential_error_message())
+    if provider == "anthropic" and not settings.ANTHROPIC_API_KEY:
+        raise RuntimeError(_credential_error_message())
+    if provider == "gemini" and not settings.GEMINI_API_KEY:
+        raise RuntimeError(_credential_error_message())
 
     ctx = _context_block(db, learner_id, kc_id)
     system = (
@@ -57,29 +97,4 @@ def tutor_reply(db: Session, learner_id: str, message: str, kc_id: int | None) -
     )
     user_msg = message.strip() or "In one short paragraph, what should I focus on for this topic?"
 
-    url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
-    payload = {
-        "model": settings.OPENAI_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_msg},
-        ],
-        "max_tokens": 500,
-        "temperature": 0.5,
-    }
-    with httpx.Client(timeout=60.0) as client:
-        r = client.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-        )
-        r.raise_for_status()
-        data = r.json()
-
-    try:
-        return str(data["choices"][0]["message"]["content"]).strip()
-    except (KeyError, IndexError, TypeError) as e:
-        raise RuntimeError("Unexpected response from language model API") from e
+    return dispatch_llm(system, user_msg)
