@@ -38,7 +38,7 @@ flowchart LR
 | App entry | [`backend/app/main.py`](../backend/app/main.py) | FastAPI app, CORS, router registration |
 | Config | [`backend/app/config.py`](../backend/app/config.py) | `DATABASE_URL`, `CORS_ORIGINS`, optional `OPENAI_*` |
 | Routers | [`backend/app/routers/`](../backend/app/routers/) | HTTP endpoints (`kcs`, `items`, `attempts`, `mastery`, `routes`, `admin`, `tutor`) |
-| Services | [`backend/app/services/`](../backend/app/services/) | `bkt.py` (BKT + thresholds + `decide`), `routing.py` (graph + route + reroute target), `decision.py` (attempt pipeline), `tutor.py` (optional LLM) |
+| Services | [`backend/app/services/`](../backend/app/services/) | `bkt.py` (BKT + thresholds + `decide`), `routing.py` (graph + route + reroute target), `decision.py` (attempt pipeline), `tutor.py` + `llm_clients.py` (optional LLM: openai / anthropic / gemini) |
 | Models | [`backend/app/models/`](../backend/app/models/) | SQLAlchemy entities |
 
 ## 4. Data model (PostgreSQL)
@@ -106,7 +106,7 @@ Prefix: `/api/v1` (see Swagger at `/docs`).
 
 ## 8. Optional AI tutor (explanation-only)
 
-- **Config:** `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`, `OPENAI_MODEL` in environment / `.env`.
+- **Config:** `LLM_PROVIDER` = `openai` | `anthropic` | `gemini`. For **openai**: `LLM_API_KEY`, optional `LLM_BASE_URL` / `LLM_MODEL` (OpenAI-compatible chat completions). For **anthropic**: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION`. For **gemini**: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, `GEMINI_API_BASE_URL`. Implementation: [`backend/app/services/llm_clients.py`](../backend/app/services/llm_clients.py).
 - **Behavior:** `POST /api/v1/tutor/chat` returns natural-language help. **Sequencing and mastery remain authoritative** in BKT + routing; the model does not change `next_kc_id` or DB state.
 - **Code:** [`backend/app/services/tutor.py`](../backend/app/services/tutor.py), [`backend/app/routers/tutor.py`](../backend/app/routers/tutor.py).
 
