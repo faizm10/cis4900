@@ -17,40 +17,47 @@ export default function MasteryBar({ before, after, threshold = 0.95 }: MasteryB
   const pct = Math.round(after * 100);
   const color = getMasteryColor(after);
   const thresholdPct = Math.round(threshold * 100);
+  const deltaPp = Math.round(Math.abs(after - before) * 100);
 
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-xs text-slate-500">
-        <span>Estimated mastery P(L)</span>
-        <span className="font-medium" style={{ color }}>
+      <div className="flex justify-between items-center gap-3 text-xs text-slate-500">
+        <span className="min-w-0">Estimated mastery P(L)</span>
+        <span
+          className="font-medium shrink-0 whitespace-nowrap text-right tabular-nums"
+          style={{ color }}
+        >
           {pct}%
           {after > before && (
-            <span className="text-emerald-500 ml-1">▲ {Math.round((after - before) * 100)}%</span>
+            <span className="text-emerald-600 ml-1.5">▲ {deltaPp} pp</span>
           )}
           {after < before && (
-            <span className="text-red-400 ml-1">▼ {Math.round((before - after) * 100)}%</span>
+            <span className="text-red-400 ml-1.5">▼ {deltaPp} pp</span>
           )}
         </span>
       </div>
-      <div className="relative h-3 bg-slate-100 rounded-full overflow-visible">
-        {/* Previous mastery marker */}
+      {/* pb-4 reserves space for the threshold label below the bar (was -top-4 and collided with the row above). */}
+      <div className="relative pb-4">
+        <div className="relative h-3 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="absolute top-0 h-full rounded-full bg-slate-200"
+            style={{ width: `${Math.round(before * 100)}%` }}
+          />
+          <div
+            className="absolute top-0 h-full rounded-full mastery-bar-fill"
+            style={{ width: `${pct}%`, backgroundColor: color }}
+          />
+        </div>
         <div
-          className="absolute top-0 h-full bg-slate-200 rounded-full"
-          style={{ width: `${Math.round(before * 100)}%` }}
-        />
-        {/* Current mastery fill */}
-        <div
-          className="absolute top-0 h-full rounded-full mastery-bar-fill"
-          style={{ width: `${pct}%`, backgroundColor: color }}
-        />
-        {/* Threshold marker */}
-        <div
-          className="absolute top-[-2px] bottom-[-2px] w-0.5 bg-slate-600 z-10"
+          className="pointer-events-none absolute top-0 z-10 h-3 w-0.5 -translate-x-1/2 bg-slate-600"
           style={{ left: `${thresholdPct}%` }}
+        />
+        <div
+          className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap text-[9px] text-slate-500"
+          style={{ left: `${thresholdPct}%`, top: "calc(0.75rem + 2px)" }}
+          title="Mastery threshold τ"
         >
-          <div className="absolute -top-4 left-1 text-[9px] text-slate-500 whitespace-nowrap">
-            {thresholdPct}%
-          </div>
+          τ {thresholdPct}%
         </div>
       </div>
     </div>

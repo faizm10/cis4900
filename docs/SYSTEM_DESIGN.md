@@ -29,7 +29,7 @@ flowchart LR
 | Backend | Python 3.12+, FastAPI, Uvicorn |
 | ORM / migrations | SQLAlchemy, Alembic |
 | DB | PostgreSQL |
-| Optional tutor | OpenAI-compatible HTTP API (see §8) |
+| Optional tutor | OpenAI-compatible, Anthropic, or Gemini HTTP APIs (see §8) |
 
 ## 3. Backend layout
 
@@ -109,6 +109,58 @@ Prefix: `/api/v1` (see Swagger at `/docs`).
 - **Config:** `LLM_PROVIDER` = `openai` | `anthropic` | `gemini`. For **openai**: `LLM_API_KEY`, optional `LLM_BASE_URL` / `LLM_MODEL` (OpenAI-compatible chat completions). For **anthropic**: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION`. For **gemini**: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, `GEMINI_API_BASE_URL`. Implementation: [`backend/app/services/llm_clients.py`](../backend/app/services/llm_clients.py).
 - **Behavior:** `POST /api/v1/tutor/chat` returns natural-language help. **Sequencing and mastery remain authoritative** in BKT + routing; the model does not change `next_kc_id` or DB state.
 - **Code:** [`backend/app/services/tutor.py`](../backend/app/services/tutor.py), [`backend/app/routers/tutor.py`](../backend/app/routers/tutor.py).
+
+### 8.1 Analysis: which LLM fits this application?
+
+There is no single “best” model for every deployment; the right choice depends on **budget, latency expectations, compliance, and how much you trust the model on CS facts** without extra guardrails. This subsection relates generic LLM trade-offs to **how this repo actually uses** the tutor (as-built).
+
+#### 8.1.1 What the tutor workload is (as implemented)
+
+From [`tutor.py`](../backend/app/services/tutor.py) and [`llm_clients.py`](../backend/app/services/llm_clients.py):
+
+| Aspect | Implication for model choice |
+|--------|-------------------------------|
+| **Task shape** | Single-turn (system + user) **chat**: explanations, hints, and short “what to focus on” guidance. No tool calling, no retrieval, no multi-step agent loop. |
+| **Grounding** | The model sees a **small structured context block**: goal KC name, ordered route as names, **next topic chosen by the app**, optional current KC and **BKT mastery estimate** `P(L)`. It does **not** see full item text unless the learner pastes it in `message`. |
+| **Safety / policy** | System prompt instructs: stay concise, **do not tell the learner to skip app ordering** or claim the model changed their path. Quality depends on **instruction following**, not raw trivia score. |
+| **Length & sampling** | OpenAI-compatible path: `max_tokens` 500, `temperature` 0.5. Anthropic/Gemini: up to 1024 output tokens, temperature 0.5. Favors **short, focused** answers. |
+| **Timeout** | `LLM_TIMEOUT_SEC` (default 60s in settings) bounds httpx; perceived UX still favors models/endpoints with **low tail latency**. |
+| **Domain** | Seed content is **intro CS with Python** (variables through recursion). Models often do well here, but **code and conceptual errors** still occur—especially in edge explanations. |
+
+So the “best” LLM here is primarily a **good short-form CS tutor that follows the system contract**, not necessarily the strongest model on long reasoning or competition math.
+
+#### 8.1.2 Dimensions to score candidates against
+
+1. **Instruction following under a fixed system prompt** — Will it consistently avoid contradicting the app’s route and “next topic”? Failures here undermine trust in the whole adaptive UI even though BKT is unchanged.
+2. **Pedagogical clarity (intro CS, Python)** — Clear definitions, small examples, appropriate difficulty; avoids overwhelming the learner in one bubble.
+3. **Factual reliability** — Risk of subtle bugs in sample code or wrong statements about Python semantics. Smaller/cheaper models tend to need **more content QA** on your prompts and KC descriptions.
+4. **Latency and cost** — Tutor is optional but **interactive**; cold starts and slow regions hurt UX. Cost scales with sessions × calls; cap on output tokens already limits spend per call.
+5. **Operability** — Fits your stack: this codebase supports **OpenAI-compatible** servers (including many gateways and self-hosted endpoints), **Anthropic Messages API**, and **Gemini generateContent**.
+6. **Privacy / data residency** — If learner IDs or pasted code must not leave a jurisdiction, prefer **enterprise endpoints** or **self-hosted** OpenAI-compatible inference behind `LLM_BASE_URL`.
+
+#### 8.1.3 Recommendations by scenario
+
+These are **pragmatic defaults**, not ranked benchmarks. Re-evaluate when you change prompts, add RAG over course materials, or expose the model to full quiz items server-side.
+
+| Priority | Suggested direction | Rationale |
+|----------|--------------------|-----------|
+| **Balanced quality for a research or pilot demo** | **Anthropic Claude** (e.g. a current **Sonnet**-class model via `LLM_PROVIDER=anthropic`) | Typically strong at **nuanced, careful** explanations and following “do not override the app” style constraints; good fit for tutoring tone. Usually **higher cost** than small models. |
+| **Low cost + acceptable quality for class-scale use** | **OpenAI** `gpt-4o-mini` or similar small multimodal chat model via `LLM_PROVIDER=openai`, or **Gemini** Flash-class via `gemini` | **Fast and economical** for short answers; adequate for many intro-CS hints. Plan for **spot checks** on explanations and code snippets. |
+| **Maximum reasoning depth (occasional deep dives)** | **OpenAI** larger GPT-4.x / 4o-class or **Anthropic** Opus-class (if budget allows) | Useful if learners paste longer code or errors; often **slower and pricier**; still bounded by your `max_tokens` unless you raise limits in code. |
+| **On-prem or no third-party API** | **OpenAI-compatible** local or VPC endpoint (`LLM_BASE_URL` + `LLM_MODEL`) | Meets **privacy** and fixed-cost goals; you own **ops, capacity, and model refresh**. Quality varies by open-weight model and quantization; **instruction following** may be weaker than frontier APIs—test against your system prompt. |
+| **Already standardized on Google Cloud** | **Gemini** with `GEMINI_API_KEY` | Straightforward integration path; compare **latency** from your region and **policy** on academic use. |
+
+**Summary:** For **this** architecture—**explanation-only**, **short outputs**, **strong separation** from routing—prioritize **instruction following + CS teaching quality** first, then **latency/cost**. If you must pick one default without other constraints: **Claude Sonnet-class (Anthropic)** is the most natural fit for **pilot quality**; **GPT-4o-mini or Gemini Flash-class** is the most natural fit for **high-volume economy**.
+
+#### 8.1.4 Validation specific to this project
+
+- **Red-team the system prompt:** Ask the model to “skip to recursion” or “ignore the app’s next topic” and verify refusals or safe redirects.
+- **Content QA:** For each KC, sample N tutor replies (with empty vs. specific learner questions) and have a human label **correctness** and **alignment** with prerequisites.
+- **Regression when swapping models:** Changing `LLM_MODEL` or provider can change tone and length; adjust `max_tokens` / temperature in [`llm_clients.py`](../backend/app/services/llm_clients.py) if needed.
+
+#### 8.1.5 Non-goals (v1)
+
+The tutor does **not** select items, update mastery, or modify routes. Therefore you **do not** need models with the strongest **tool-use** or **long-context** capabilities for v1 unless you extend the product (e.g. retrieval over textbooks, automatic misconception detection writing to the DB). Those extensions would change the analysis.
 
 ## 9. Frontend routes
 
