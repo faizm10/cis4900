@@ -185,7 +185,7 @@ Global navigation: [`frontend/src/components/shared/NavBar.tsx`](../frontend/src
 | 3.4 BKT update service | [`bkt.py`](../backend/app/services/bkt.py), invoked from [`decision.py`](../backend/app/services/decision.py) |
 | 3.5 Routing + rerouting | [`routing.py`](../backend/app/services/routing.py), [`routes.py`](../backend/app/routers/routes.py) |
 | 3.6 Learner UI | Map, route strip, activity, progress; plus **why-next** rationale on route payload and post-attempt text |
-| 3.7 Deployment | Per [`README.md`](../README.md) — static/SSR frontend, API process, managed Postgres |
+| 3.7 Deployment | Per [`README.md`](../README.md) — **Docker Compose** full stack (db, backend, frontend, pgAdmin) or **local** Uvicorn + `npm run dev` with Postgres in Docker; see README Path A / Path B |
 
 ## 11. UX notes (spec vs. built)
 

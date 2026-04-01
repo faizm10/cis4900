@@ -15,17 +15,46 @@ Frontend (Next.js 14 + React Flow)  ←→  Backend (FastAPI + Python)  ←→  
 
 Full **as-built system design** (data model, APIs, flows, mapping to the research spec): [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md).
 
+## Prerequisites
+
+- **Path A (Docker):** [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2.
+- **Path B (local processes):** Docker (for Postgres only), **Python 3.12+**, **Node.js 20+**, and `npm`.
+
 ## Quick Start
 
-### 1. Start PostgreSQL
+### Path A — Full stack with Docker (simplest)
+
+Starts PostgreSQL, FastAPI backend, Next.js frontend (production build), and pgAdmin.
+
 ```bash
-docker compose up -d
+docker compose up --build
+# or detached: docker compose up --build -d
 ```
 
-### 2. Backend
+| Service | URL / port | Notes |
+|--------|------------|--------|
+| Web app | [http://localhost:3000](http://localhost:3000) | Next.js |
+| API + Swagger | [http://localhost:8000](http://localhost:8000), `/docs` | FastAPI |
+| PostgreSQL (host) | `localhost:5434` | User/password/db: `postgres` / `postgres` / `cs_learning` |
+| pgAdmin | [http://localhost:5050](http://localhost:5050) | Email `admin@admin.com`, password `admin` |
+
+On startup the **backend** container runs **Alembic migrations** and the **idempotent seed** script, then Uvicorn ([`backend/docker-entrypoint.sh`](backend/docker-entrypoint.sh)).
+
+### Path B — Local backend + frontend, database in Docker
+
+**1. Start PostgreSQL only**
+
+```bash
+docker compose up -d db
+```
+
+Use `DATABASE_URL=postgresql://postgres:postgres@localhost:5434/cs_learning` in `backend/.env` (see [`backend/.env.example`](backend/.env.example)).
+
+**2. Backend**
+
 ```bash
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 alembic upgrade head
@@ -34,7 +63,8 @@ uvicorn app.main:app --reload --port 8000
 # Swagger UI: http://localhost:8000/docs
 ```
 
-### 3. Frontend
+**3. Frontend**
+
 ```bash
 cd frontend
 npm install
@@ -43,7 +73,8 @@ npm run dev
 # App: http://localhost:3000
 ```
 
-### 4. Run backend tests
+### Run backend tests
+
 ```bash
 cd backend && pytest tests/ -v
 ```
@@ -74,7 +105,7 @@ Variables → Boolean Expressions → Conditionals → Loops → Functions → R
 ## Screens
 
 | Screen | Path | Purpose |
-|--------|------|---------|
+|--------|------|--------|
 | Landing | `/` | Enter learner name |
 | Goal | `/goal` | Select target KC |
 | Map | `/map` | Interactive React Flow knowledge graph |
@@ -84,10 +115,11 @@ Variables → Boolean Expressions → Conditionals → Loops → Functions → R
 
 ## API Endpoints
 
-Base URL: `http://localhost:8000`
+Base URL: `http://localhost:8000`  
 Swagger: `http://localhost:8000/docs`
 
 Key endpoints:
+
 - `GET /api/v1/kcs/graph` — full KC + edge graph for visualization
 - `GET /api/v1/items/next?learner_id=&kc_id=` — next quiz item
 - `POST /api/v1/attempts` — submit answer → BKT update → decision
@@ -99,7 +131,6 @@ Key endpoints:
 - `POST /api/v1/tutor/chat` — optional AI tutor (`LLM_PROVIDER`: openai | anthropic | gemini; does not change routing)
 
 Route and attempt responses include plain-language **why-next** / **decision** rationale fields for the UI.
-
 
 ## AI tutor (optional)
 
@@ -113,9 +144,25 @@ Set `LLM_PROVIDER` in `backend/.env` to **`openai`**, **`anthropic`**, or **`gem
 
 Also: `LLM_TIMEOUT_SEC` (optional). Use the **AI tutor** panel on Map and Practice after configuration.
 
+**Docker:** With default Compose, no LLM keys are passed in; the tutor stays disabled until you add them. Options: add `env_file: ./backend/.env` to the `backend` service in [`docker-compose.yml`](docker-compose.yml) (keep `.env` out of git), or set the same variables under `backend.environment`. Never commit API keys.
+
+## Research PDF (LaTeX)
+
+Source and build steps: [docs/research/README.md](docs/research/README.md).
+
 ## References
 
 - Corbett & Anderson (1995) — Bayesian Knowledge Tracing
 - VanLehn (2006) — Outer/Inner loop in ITS
 - Brusilovsky (2001) — Adaptive Hypermedia
 - Piech et al. (2015) — Deep Knowledge Tracing
+
+## Submission checklist
+
+Before handing in the project, verify:
+
+- [ ] `cd backend && pytest tests/ -v` passes
+- [ ] `cd frontend && npm run lint` and `npm run build` pass
+- [ ] Path A or Path B from **Quick Start** runs end-to-end (open app, goal, map, one practice attempt)
+- [ ] If submitting the research PDF: `pdflatex` twice on `docs/research/research-plan.tex` (see [docs/research/README.md](docs/research/README.md))
+- [ ] No secrets or `.env` files committed (`.env` is gitignored)

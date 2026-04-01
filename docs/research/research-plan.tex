@@ -444,9 +444,13 @@ Knowledge Components (KCs), consistent with established ITS decompositions and o
 logic \cite{woolf2009,vanlehn2006,corbett1995}.
 
 \paragraph{Prototype scope (v1).}
-The v1 system supports goal selection, diagnostic initialization, quiz/exercise attempts, mastery updates,
+The v1 system supports goal selection, quiz/exercise attempts, mastery updates (BKT),
 and prerequisite-respecting route generation. To reduce ambiguity in mastery updates and ensure clean
 instrumentation, each activity item is mapped to exactly one KC in v1.
+The \textbf{implemented} prototype initializes mastery from fixed per-KC priors stored in the database until
+the learner's first attempt on each KC; a dedicated pre-route diagnostic screen is \emph{not} implemented
+(as-built: see \texttt{docs/SYSTEM\_DESIGN.md}, Section~11). A future release could add a short diagnostic item set
+using the same attempt/BKT APIs.
 
 \paragraph{Out of scope (v1).}
 Deep sequence models (e.g., DKT), automated KC discovery, multi-KC credit assignment, and sophisticated
@@ -517,9 +521,11 @@ persists events, and orchestrates routing and student-model updates.
 % 3.2 Learning Flow / State Machine
 % ---------------------------------
 \subsection{End-to-End Learning Flow}
-Figure~\ref{fig:learning-flow} describes the outer-loop learning flow. The learner selects a goal KC, completes
-a diagnostic to initialize mastery priors, follows the recommended route, and repeatedly updates mastery after
-each attempt. The system reroutes when evidence indicates persistent low mastery.
+Figure~\ref{fig:learning-flow} describes the idealized outer-loop learning flow. The learner selects a goal KC;
+in the \textbf{reference} flow, a diagnostic supplies initial evidence before routing. In the \textbf{built}
+system, priors come from KC metadata until attempts provide evidence; routing and practice otherwise match the loop below.
+The learner follows the recommended route and repeatedly updates mastery after each attempt; the system may reroute
+when evidence indicates persistent low mastery.
 
 \begin{figure}[H]
 \centering
@@ -556,9 +562,10 @@ each attempt. The system reroutes when evidence indicates persistent low mastery
 \end{figure}
 
 \paragraph{Diagnostic initialization.}
-The diagnostic provides initial evidence to set $P(L_0)$ values per KC. In v1, the diagnostic can be implemented
-as a small set of KC-tagged items; mastery priors are initialized using either fixed priors or diagnostic-derived
-posteriors (same BKT update rule).
+A dedicated diagnostic can provide initial evidence to refine $P(L_0)$ per KC before routing. The reference
+diagram (Figure~\ref{fig:learning-flow}) includes this step for clarity. The \textbf{current implementation}
+uses fixed priors from each KC row until the learner attempts items on that KC; adding a diagnostic is a
+straightforward extension (reuse the same attempt submission and BKT update pipeline on KC-tagged items).
 
 \FloatBarrier
 
