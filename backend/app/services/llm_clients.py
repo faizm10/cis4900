@@ -116,7 +116,7 @@ def call_gemini_generate(system: str, user: str) -> str:
 
 
 def dispatch_llm(system: str, user: str) -> str:
-    provider = (settings.LLM_PROVIDER or "openai").strip().lower()
+    provider = (settings.LLM_PROVIDER or "anthropic").strip().lower()
     if provider == "openai":
         return call_openai_chat(system, user)
     if provider == "anthropic":

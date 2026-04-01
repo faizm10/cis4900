@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # Tutor: openai | anthropic | gemini
     LLM_PROVIDER: Literal["openai", "anthropic", "gemini"] = Field(
-        default="openai",
+        default="anthropic",
         validation_alias=AliasChoices("LLM_PROVIDER"),
     )
 
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # Anthropic (LLM_PROVIDER=anthropic)
     ANTHROPIC_API_KEY: str | None = None
-    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
     ANTHROPIC_API_URL: str = "https://api.anthropic.com"
     ANTHROPIC_VERSION: str = "2023-06-01"
 

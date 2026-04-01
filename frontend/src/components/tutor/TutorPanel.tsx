@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import TutorMarkdown from "@/components/tutor/TutorMarkdown";
 
 interface TutorPanelProps {
   learnerId: string;
@@ -71,8 +72,8 @@ export default function TutorPanel({ learnerId, kcId }: TutorPanelProps) {
           </button>
           {error && <p className="text-xs text-red-600">{error}</p>}
           {reply && (
-            <div className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 whitespace-pre-wrap">
-              {reply}
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 max-h-[min(70vh,28rem)] overflow-y-auto">
+              <TutorMarkdown content={reply} />
             </div>
           )}
         </div>

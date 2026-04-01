@@ -66,7 +66,7 @@ def format_upstream_error(response: httpx.Response) -> str:
 
 
 def _credential_error_message() -> str:
-    p = (settings.LLM_PROVIDER or "openai").lower()
+    p = (settings.LLM_PROVIDER or "anthropic").lower()
     if p == "openai":
         return (
             "Tutor is disabled: set LLM_API_KEY (or OPENAI_API_KEY) for OpenAI-compatible APIs."
@@ -79,7 +79,7 @@ def _credential_error_message() -> str:
 
 
 def tutor_reply(db: Session, learner_id: str, message: str, kc_id: int | None) -> str:
-    provider = (settings.LLM_PROVIDER or "openai").lower()
+    provider = (settings.LLM_PROVIDER or "anthropic").lower()
     if provider == "openai" and not settings.LLM_API_KEY:
         raise RuntimeError(_credential_error_message())
     if provider == "anthropic" and not settings.ANTHROPIC_API_KEY:
@@ -92,7 +92,9 @@ def tutor_reply(db: Session, learner_id: str, message: str, kc_id: int | None) -
         "You are a concise computer science tutor. The learning application (not you) decides "
         "which concept the learner practices next and estimates mastery using a fixed policy. "
         "Never tell the learner to skip the app's ordering or claim you changed their path. "
-        "Give short, accurate explanations, examples, or debugging hints.\n\n"
+        "Give short, accurate explanations, examples, or debugging hints. "
+        "Format answers with Markdown when it helps: use ##/### headings, bullet lists, **bold**, "
+        "and fenced ```language code blocks``` for code.\n\n"
         f"Learner context:\n{ctx}"
     )
     user_msg = message.strip() or "In one short paragraph, what should I focus on for this topic?"

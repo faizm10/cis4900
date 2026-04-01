@@ -128,23 +128,30 @@ Key endpoints:
 - `POST /api/v1/routes/{id}/advance` — advance after KC mastered
 - `POST /api/v1/routes/{id}/reroute` — backtrack to prerequisite
 - `DELETE /api/v1/mastery/{id}` — reset learner progress (demo)
-- `POST /api/v1/tutor/chat` — optional AI tutor (`LLM_PROVIDER`: openai | anthropic | gemini; does not change routing)
+- `POST /api/v1/tutor/chat` — optional AI tutor (`LLM_PROVIDER`: anthropic | openai | gemini; does not change routing)
 
 Route and attempt responses include plain-language **why-next** / **decision** rationale fields for the UI.
 
 ## AI tutor (optional)
 
-Set `LLM_PROVIDER` in `backend/.env` to **`openai`**, **`anthropic`**, or **`gemini`**, then set the matching credentials. The tutor only returns text; **routing and BKT are unchanged**.
+The app defaults to **Anthropic Claude** for the tutor. The tutor only returns text; **routing and BKT are unchanged**.
+
+**Claude setup (recommended):**
+
+1. Copy [`backend/.env.example`](backend/.env.example) to `backend/.env` if you have not already.
+2. Create an API key at [Anthropic Console](https://console.anthropic.com/).
+3. Set `ANTHROPIC_API_KEY` in `backend/.env`. Defaults: `LLM_PROVIDER=anthropic`, `ANTHROPIC_MODEL=claude-sonnet-4-6` (override with e.g. `claude-haiku-4-5` for lower cost/latency — see [Anthropic models](https://docs.anthropic.com/en/docs/about-claude/models)).
+4. Restart the backend. Use the **AI tutor** panel on Map and Practice.
 
 | Provider | Required env vars | Notes |
 |----------|-------------------|--------|
-| `openai` | `LLM_API_KEY` (or `OPENAI_API_KEY`), optional `LLM_BASE_URL`, `LLM_MODEL` | OpenAI or any OpenAI-compatible `POST /v1/chat/completions` with Bearer auth |
-| `anthropic` | `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION` | [Claude Messages API](https://docs.anthropic.com/en/api/messages) |
+| `anthropic` (default) | `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION` | [Claude Messages API](https://docs.anthropic.com/en/api/messages) |
+| `openai` | `LLM_API_KEY` (or `OPENAI_API_KEY`), optional `LLM_BASE_URL`, `LLM_MODEL` | OpenAI or OpenAI-compatible `POST /v1/chat/completions` |
 | `gemini` | `GEMINI_API_KEY`, optional `GEMINI_MODEL`, `GEMINI_API_BASE_URL` | [Gemini generateContent](https://ai.google.dev/api/generate-content) |
 
-Also: `LLM_TIMEOUT_SEC` (optional). Use the **AI tutor** panel on Map and Practice after configuration.
+Also: `LLM_TIMEOUT_SEC` (optional, default 60).
 
-**Docker:** With default Compose, no LLM keys are passed in; the tutor stays disabled until you add them. Options: add `env_file: ./backend/.env` to the `backend` service in [`docker-compose.yml`](docker-compose.yml) (keep `.env` out of git), or set the same variables under `backend.environment`. Never commit API keys.
+**Docker:** Compose loads `backend/.env` when present (`env_file` with `required: false` in [`docker-compose.yml`](docker-compose.yml)). Add your `ANTHROPIC_API_KEY` there for the tutor in containers. Never commit API keys.
 
 ## Research PDF (LaTeX)
 

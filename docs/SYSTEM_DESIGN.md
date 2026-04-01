@@ -29,7 +29,7 @@ flowchart LR
 | Backend | Python 3.12+, FastAPI, Uvicorn |
 | ORM / migrations | SQLAlchemy, Alembic |
 | DB | PostgreSQL |
-| Optional tutor | OpenAI-compatible, Anthropic, or Gemini HTTP APIs (see §8) |
+| Optional tutor | Anthropic Claude (default), OpenAI-compatible, or Gemini HTTP APIs (see §8) |
 
 ## 3. Backend layout
 
@@ -106,7 +106,7 @@ Prefix: `/api/v1` (see Swagger at `/docs`).
 
 ## 8. Optional AI tutor (explanation-only)
 
-- **Config:** `LLM_PROVIDER` = `openai` | `anthropic` | `gemini`. For **openai**: `LLM_API_KEY`, optional `LLM_BASE_URL` / `LLM_MODEL` (OpenAI-compatible chat completions). For **anthropic**: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION`. For **gemini**: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, `GEMINI_API_BASE_URL`. Implementation: [`backend/app/services/llm_clients.py`](../backend/app/services/llm_clients.py).
+- **Config:** `LLM_PROVIDER` = `anthropic` | `openai` | `gemini` (default **anthropic** / Claude in [`config.py`](../backend/app/config.py)). For **anthropic**: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL` (default `claude-sonnet-4-6`), `ANTHROPIC_API_URL`, `ANTHROPIC_VERSION`. For **openai**: `LLM_API_KEY`, optional `LLM_BASE_URL` / `LLM_MODEL`. For **gemini**: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, `GEMINI_API_BASE_URL`. Implementation: [`backend/app/services/llm_clients.py`](../backend/app/services/llm_clients.py).
 - **Behavior:** `POST /api/v1/tutor/chat` returns natural-language help. **Sequencing and mastery remain authoritative** in BKT + routing; the model does not change `next_kc_id` or DB state.
 - **Code:** [`backend/app/services/tutor.py`](../backend/app/services/tutor.py), [`backend/app/routers/tutor.py`](../backend/app/routers/tutor.py).
 
