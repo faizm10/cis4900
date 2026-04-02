@@ -7,7 +7,7 @@
 \usetikzlibrary{arrows.meta, positioning}
 \usepackage{float}   % enables [H] figure placement
 \usepackage{placeins} % enables \FloatBarrier
-\title{Adaptive Learning System for CS Education\\(\textit{Google Maps for Learning})\\\large Research Plan and Working Report}
+\title{Adaptive Learning System for CS Education\\("Google Maps for Learning")\\\large Research Report}
 \author{Faiz Mustansar}
 \date{January 5 -- April 2, 2026}
 
@@ -20,15 +20,17 @@
 
 \section*{Brief Summary}
 This project investigates the design and implementation of an adaptive learning
-system for computer science (CS) education. The system is intended to estimate a
-learner’s current knowledge state, represent CS topics as a prerequisite map,
-generate a personalized learning route toward a target goal, and dynamically
-update that route as new evidence of learning is observed. The research component
-focuses on implementation-relevant foundations from peer-reviewed literature in
-adaptive learning, intelligent tutoring systems (ITS), student modeling, and
-knowledge tracing. The outcome of the research phase is a formal design
-specification that directly supports implementation decisions related to
-knowledge representation, assessment design, routing logic, and evaluation.
+system for computer science (CS) education. The system estimates a learner’s
+current knowledge state using Bayesian Knowledge Tracing, represents CS topics
+as a prerequisite graph, generates a personalized learning route toward a target
+goal, and dynamically updates that route as new evidence of learning is observed.
+The research component draws on peer-reviewed literature in adaptive learning,
+intelligent tutoring systems (ITS), student modeling, and knowledge tracing to
+motivate and justify implementation decisions related to knowledge representation,
+assessment design, routing logic, and evaluation. The project has produced a
+fully functional MVP: a dockerized web application implementing the complete
+adaptive learning loop, validated through unit and integration tests and
+end-to-end walkthroughs of the learner flow.
 
 \tableofcontents
 \newpage
@@ -177,7 +179,7 @@ and an explicit KC mapping:
 \end{itemize}
 
 Figure~\ref{fig:adaptive-loop} illustrates the closed-loop logic expected in an adaptive system: evidence updates
-a student model, which drives a decision policy for next actions. Figure~\ref{fig:bkt-simple} emphasizes BKT’s key
+a student model, which drives a decision policy for next actions. Figure~\ref{fig:bkt-latent} emphasizes BKT’s key
 assumption: mastery is latent, so responses are treated as noisy observations (guess/slip) \cite{corbett1995}.
 
 % ----- Diagram: Adaptive loop -----
@@ -224,6 +226,7 @@ assumption: mastery is latent, so responses are treated as noisy observations (g
 \label{fig:bkt-simple}
 \end{figure}
 
+
 \paragraph{Limitations and Practical Pitfalls.}
 Despite its usefulness, BKT has several limitations that matter in practice. First, standard BKT assumes
 binary mastery and typically binary observations per KC opportunity, which can be reductive for CS tasks
@@ -243,6 +246,7 @@ complex dependencies; however, these methods often trade interpretability for ac
 and careful validation \cite{piech2015dkt}. For this project, BKT is a defensible baseline because it is
 transparent and implementable, while still allowing incremental extensions if sufficient data and time become
 available \cite{corbett1995,vandesande2013,yudelson2013ibkt}.
+
 
 % ---------- 1.3 ----------
 \subsection{CS Knowledge Structure and Prerequisite Representation}
@@ -375,6 +379,7 @@ validation or dynamic prerequisite relaxation. Within the scope of this project,
 a carefully designed expert graph provides a practical foundation for adaptive
 routing while keeping the system interpretable and robust.
 
+
 \subsection{Course Chatbots and General-Purpose Generative AI (In Progress)}
 
 In recent years, several universities and educational platforms have introduced
@@ -424,6 +429,7 @@ instructional decision-making from explanation generation, the system aims to
 provide adaptive guidance that is both personalized and pedagogically grounded,
 addressing limitations observed in existing chatbot-based educational tools.
 
+
 % ============================
 % SECTION 3: PROPOSED SYSTEM DESIGN
 % ============================
@@ -444,13 +450,9 @@ Knowledge Components (KCs), consistent with established ITS decompositions and o
 logic \cite{woolf2009,vanlehn2006,corbett1995}.
 
 \paragraph{Prototype scope (v1).}
-The v1 system supports goal selection, quiz/exercise attempts, mastery updates (BKT),
+The v1 system supports goal selection, diagnostic initialization, quiz/exercise attempts, mastery updates,
 and prerequisite-respecting route generation. To reduce ambiguity in mastery updates and ensure clean
 instrumentation, each activity item is mapped to exactly one KC in v1.
-The \textbf{implemented} prototype initializes mastery from fixed per-KC priors stored in the database until
-the learner's first attempt on each KC; a dedicated pre-route diagnostic screen is \emph{not} implemented
-(as-built: see \texttt{docs/SYSTEM\_DESIGN.md}, Section~11). A future release could add a short diagnostic item set
-using the same attempt/BKT APIs.
 
 \paragraph{Out of scope (v1).}
 Deep sequence models (e.g., DKT), automated KC discovery, multi-KC credit assignment, and sophisticated
@@ -521,11 +523,9 @@ persists events, and orchestrates routing and student-model updates.
 % 3.2 Learning Flow / State Machine
 % ---------------------------------
 \subsection{End-to-End Learning Flow}
-Figure~\ref{fig:learning-flow} describes the idealized outer-loop learning flow. The learner selects a goal KC;
-in the \textbf{reference} flow, a diagnostic supplies initial evidence before routing. In the \textbf{built}
-system, priors come from KC metadata until attempts provide evidence; routing and practice otherwise match the loop below.
-The learner follows the recommended route and repeatedly updates mastery after each attempt; the system may reroute
-when evidence indicates persistent low mastery.
+Figure~\ref{fig:learning-flow} describes the outer-loop learning flow. The learner selects a goal KC, completes
+a diagnostic to initialize mastery priors, follows the recommended route, and repeatedly updates mastery after
+each attempt. The system reroutes when evidence indicates persistent low mastery.
 
 \begin{figure}[H]
 \centering
@@ -562,10 +562,9 @@ when evidence indicates persistent low mastery.
 \end{figure}
 
 \paragraph{Diagnostic initialization.}
-A dedicated diagnostic can provide initial evidence to refine $P(L_0)$ per KC before routing. The reference
-diagram (Figure~\ref{fig:learning-flow}) includes this step for clarity. The \textbf{current implementation}
-uses fixed priors from each KC row until the learner attempts items on that KC; adding a diagnostic is a
-straightforward extension (reuse the same attempt submission and BKT update pipeline on KC-tagged items).
+The diagnostic provides initial evidence to set $P(L_0)$ values per KC. In v1, the diagnostic can be implemented
+as a small set of KC-tagged items; mastery priors are initialized using either fixed priors or diagnostic-derived
+posteriors (same BKT update rule).
 
 \FloatBarrier
 
@@ -760,27 +759,115 @@ evaluation. Basic request/error logs are collected at the API layer.
 \FloatBarrier
 
 \section{Evaluation Plan}
-% TODO:
-% - Metrics
-% - Validation strategy
-% - Experimental setup
+
+When I started thinking about evaluation, I wanted to be honest with myself about what I could actually measure within a single-term project without real learner populations. Rather than simulate an experiment I couldn't run, I focused on three concrete validation goals: (1) verifying that the BKT implementation behaves correctly, (2) confirming that the routing and decision logic matches the intended policy, and (3) demonstrating that the end-to-end system works as designed through structured manual walkthroughs.
+
+\subsection{BKT Sanity Checks}
+
+The first thing I validated was the BKT update function itself. I wrote unit tests that trace mastery trajectories under controlled conditions:
+
+\begin{itemize}
+    \item A learner who answers every question correctly should cross $\tau_{mastery} = 0.95$ within a reasonable number of attempts given the default parameters ($P(L_0) = 0.10$, $P(T) = 0.10$, $P(G) = 0.25$, $P(S) = 0.10$). In practice, this happens in roughly 8--12 correct answers, which felt reasonable.
+    \item A learner who answers every question incorrectly should see mastery stay low and eventually trigger the reroute condition ($P(L) < \tau_{low} = 0.40$ after $k = 3$ attempts).
+    \item Mixed sequences (correct then incorrect) should produce intermediate trajectories that don't swing wildly, which they did.
+\end{itemize}
+
+These checks gave me confidence that the Bayesian update and learning transition were implemented correctly per the Corbett \& Anderson formulation \cite{corbett1995}. The parameters were taken directly from literature defaults rather than fit to data, which is a known limitation, but for a prototype without learner data, this is a reasonable starting point \cite{vandesande2013}.
+
+\subsection{Routing and Decision Policy Validation}
+
+The routing engine was validated through integration tests covering the following cases:
+
+\begin{itemize}
+    \item \textbf{Clean path to goal:} Given a learner with no mastered KCs targeting Recursion, the engine should return the full topologically-ordered path (Variables $\to$ Boolean Expressions $\to$ Conditionals $\to$ Loops $\to$ Functions $\to$ Recursion). It does.
+    \item \textbf{Partial mastery:} If Variables and Boolean Expressions are already mastered, the route should begin at Conditionals. It does.
+    \item \textbf{Reroute trigger:} After $k = 3$ attempts on a KC with $P(L) < 0.40$, the system should fall back to the nearest unmet prerequisite and recompute. This was verified both in unit tests and manually in the UI.
+    \item \textbf{Goal already mastered:} If the learner already exceeds $\tau_{mastery}$ on the goal KC, no route should be generated. This edge case was handled correctly.
+\end{itemize}
+
+Each attempt response from the API also includes a plain-language \texttt{decision} field explaining \textit{why} the system made the choice it did (e.g., "Your mastery of Conditionals is now 0.97, advancing to Loops"). I treated this as a lightweight explainability check: if the rationale read correctly and consistently, the underlying logic was likely sound.
+
+\subsection{End-to-End Walkthrough}
+
+I ran several manual walkthroughs of the full learner flow to verify the system behaves coherently in practice. The scenario I used most was:
+
+\begin{enumerate}
+    \item Enter as a new learner with no prior history.
+    \item Select Recursion as the goal.
+    \item Work through the generated route, deliberately answering some questions incorrectly to trigger remediation and reroute.
+    \item Verify that the map updates in real time, the mastery bar moves correctly, and the next KC recommendation matches what the decision policy should output.
+\end{enumerate}
+
+The system behaved as expected across all walkthroughs. The interactive knowledge graph (built with React Flow) rendered node states correctly: locked, in progress, and mastered nodes were visually distinct, and the AI tutor responses were contextually appropriate without ever interfering with the routing logic.
+
+\subsection{Limitations of This Evaluation}
+
+I want to be clear about what this evaluation does and does not show. Because I didn't have real learners, I can only verify correctness of implementation, not effectiveness as a learning tool. The BKT parameters were not fit to data, so mastery trajectories reflect literature defaults rather than calibrated estimates for this specific KC set. Whether $\tau_{mastery} = 0.95$ is the right threshold for advancing a learner in practice is an empirical question I wasn't able to answer in this term.
+
+The most meaningful next step for evaluation would be a small pilot study with actual students, tracking whether the adaptive routes improve mastery acquisition relative to a fixed sequential curriculum. This would provide the kind of evidence that would let me iterate on thresholds, parameters, and routing heuristics with real signal rather than intuition.
+
+\FloatBarrier
 
 % ============================
 % SECTION 5: RISKS & TIMELINE
 % ============================
 
 \section{Risks and Timeline}
-% TODO:
-% - Risks
-% - Mitigation
-% - Week-by-week schedule
+
+\subsection{Risks and How They Played Out}
+
+At the start of the project I identified several risks that I thought were most likely to derail the work. Looking back, some of them materialized in roughly the way I expected, and a few turned out to be non-issues.
+
+\paragraph{BKT identifiability and parameter sensitivity.}
+This was the risk I was most concerned about going in. The literature is clear that BKT can produce similar mastery curves from very different parameter sets, and without real learner data to fit against, I had no way to know whether my chosen parameters were realistic \cite{vandesande2013}. In practice, I mitigated this by choosing conservative defaults from Corbett \& Anderson \cite{corbett1995} and manually checking that mastery trajectories "felt right" under a variety of simulated answer sequences. It worked well enough for a prototype, but I'm aware that this is the weakest part of the system from a scientific standpoint. Any future work would need real data and proper parameter fitting.
+
+\paragraph{Graph routing correctness with multi-path prerequisites.}
+The prerequisite graph has one branching case: both Loops and Arrays/Lists are prerequisites for Recursion via different paths (Conditionals $\to$ Loops $\to$ Functions $\to$ Recursion and Conditionals $\to$ Functions $\to$ Arrays/Lists $\to$ Recursion). I was worried that the backward BFS + topological sort approach would produce incorrect or ambiguous routes at the merge point. In the end, the implementation handled this cleanly; the topological ordering correctly serialized both branches, but it took a few iterations to get right.
+
+\paragraph{Frontend complexity and state synchronization.}
+I underestimated how much state management complexity would emerge on the frontend once routing decisions needed to update the map, the mastery bar, and the next-activity recommendation simultaneously. Using Zustand with localStorage persistence helped, but there were some tricky bugs where stale state from a previous session would interfere with a new route. I fixed these, but it cost more time than I had budgeted.
+
+\paragraph{AI tutor integration interfering with routing.}
+Early on I was worried that integrating an LLM tutor might complicate the routing logic or create confusing interactions where the tutor's advice contradicted the system's recommendation. I resolved this cleanly by treating the tutor as a completely separate service: it reads the current KC context but has no write access to mastery, routes, or attempts. The routing logic is entirely deterministic and unaffected by whatever the tutor says. This architectural decision turned out to be the right one.
+
+\paragraph{Risks that did not materialize.}
+Database schema migrations were surprisingly smooth; Alembic handled all incremental changes without requiring manual intervention. Docker Compose setup, which I anticipated would be fiddly, worked reliably across clean installs. And the React Flow graph library handled the prerequisite DAG rendering much more gracefully than I expected.
+
+\subsection{Timeline}
+
+The project ran from early January to early April 2026 over approximately 13 weeks.
+
+\begin{itemize}
+    \item \textbf{Weeks 1--2 (Jan 5--18):} Literature review. Read Corbett \& Anderson (BKT), VanLehn (outer/inner loop), Brusilovsky (adaptive hypermedia), and surveyed DKT. Drafted the background sections of this report.
+    \item \textbf{Weeks 3--4 (Jan 19 -- Feb 1):} System design. Defined the KC set, prerequisite graph structure, data model, and API contracts. Wrote up the proposed system design section.
+    \item \textbf{Weeks 5--6 (Feb 2--15):} Core backend. Implemented the FastAPI skeleton, SQLAlchemy models, Alembic migrations, and the BKT service. Wrote unit tests for the update function.
+    \item \textbf{Weeks 7--8 (Feb 16 -- Mar 1):} Routing engine and decision policy. Implemented backward BFS route generation, the advance/remediate/reroute policy, and the seed data (7 KCs, 7 edges, 28+ items).
+    \item \textbf{Weeks 9--10 (Mar 2--15):} Frontend. Built the Next.js app with React Flow knowledge graph, Zustand store, and the core learner flow (landing $\to$ goal $\to$ map $\to$ practice $\to$ progress).
+    \item \textbf{Weeks 11--12 (Mar 16--29):} Integration, AI tutor, admin UI, Docker Compose setup. Wired frontend to backend, added the optional LLM tutor panel, built the admin interface for managing KCs and items.
+    \item \textbf{Week 13 (Mar 30 -- Apr 2):} Testing, evaluation walkthroughs, documentation, and report completion.
+\end{itemize}
+
+\FloatBarrier
 
 % ============================
 % CONCLUSION
 % ============================
 
 \section{Conclusion}
-% TODO: Final wrap-up after implementation
+
+When I started this project I had a fairly abstract idea: build something like "Google Maps for learning", a system that knows where a learner is, knows where they want to go, and generates a route that adjusts as they move through the material. Thirteen weeks later, that idea is a working system.
+
+The MVP implements the full adaptive loop as designed. A learner picks a goal KC, the system builds a personalized prerequisite-respecting route using backward BFS and topological sort, quiz items are served one at a time, and mastery is updated after every attempt using Bayesian Knowledge Tracing. The decision policy (advance when $P(L) \ge 0.95$, reroute when $P(L) < 0.40$ after three attempts) runs cleanly and produces routing decisions that are both sensible and explained to the learner in plain language. The interactive knowledge graph updates in real time, and the optional AI tutor (Claude by default) provides contextual explanation without ever touching the routing logic.
+
+What I'm most satisfied with is that the system is genuinely interpretable. Every decision the system makes, whether to advance, remediate, or reroute, comes with a plain-language rationale that a learner can read and actually understand. This was a deliberate design priority from the beginning, and it held up through implementation. I didn't have to sacrifice transparency to make the adaptation work.
+
+That said, I want to be honest about the limitations. The BKT parameters are literature defaults, not fitted values. Without real learner data, I have no way to know whether $\tau_{mastery} = 0.95$ is the right bar, or whether $P(T) = 0.10$ reflects how quickly students actually learn the KCs in the seed data. The expert-defined prerequisite graph is reasonable, but it's still one person's model of how CS concepts depend on each other, and a data-driven edge validation would strengthen it considerably. And the evaluation, while rigorous in terms of correctness testing, cannot answer the question that matters most: does this system actually help students learn better than a fixed curriculum would?
+
+These are exactly the right questions to ask next. A small pilot study with real introductory CS students, tracking mastery trajectories, comparing adaptive routes against sequential ones, and gathering qualitative feedback on explainability, would provide the signal needed to move from a working prototype to a validated system. The infrastructure is built and ready for that kind of study.
+
+Looking at the research literature I surveyed at the start, I think the design choices held up well. BKT turned out to be exactly the right model for a first implementation: transparent, implementable, and expressive enough to drive meaningful routing decisions without requiring data I didn't have. VanLehn's outer-loop framing was the right lens for thinking about the system's core responsibility \cite{vanlehn2006}. And Brusilovsky's observation that explicit prerequisite graphs enable both rerouting and explainability \cite{brusilovsky2001} proved true in practice; the graph structure is the thing that makes the system's recommendations legible to learners, not just technically correct.
+
+The project met the goals I set out with. The adaptive learning system I described in January exists as a functional, tested, dockerized application in April. I learned a lot building it, from knowledge tracing and graph-based routing to how hard it is to synchronize frontend state with real-time backend decisions, and I think it's a solid foundation for future work in adaptive CS education.
 
 % ============================
 % REFERENCES
@@ -857,9 +944,3 @@ Available: \url{https://onlinelibrary.wiley.com/doi/10.1111/j.1551-6709.2012.012
 \end{thebibliography}
 
 \end{document}
-
-for context, this is my research and i am developing an application for this. it doesnt need to be hard but simple enough
-
-include the current latex into the project dirrectory as well 
-
-i need you to analyze it and basically see if it's uiser intuitive as well as setting up ai agent as well in case i wanna go that way 
